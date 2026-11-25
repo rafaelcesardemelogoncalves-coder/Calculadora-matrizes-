@@ -1,0 +1,252 @@
+
+#include <stdio.h>
+#include <stdlib.h>
+#include <math.h>
+
+#define MAX_MATRIZES 10
+#define MAX 10
+
+typedef struct {
+    int linhas;
+    int colunas;
+    double dados[MAX][MAX];
+} Matriz;
+
+void lerMatriz(Matriz *m, int numero) {
+    printf("\nCadastro da matriz %d\n", numero);
+
+    do {
+        printf("Quantidade de linhas (1 a 10): ");
+        scanf("%d", &m->linhas);
+    } while (m->linhas < 1 || m->linhas > MAX);
+
+    do {
+        printf("Quantidade de colunas (1 a 10): ");
+        scanf("%d", &m->colunas);
+    } while (m->colunas < 1 || m->colunas > MAX);
+
+    for (int i = 0; i < m->linhas; i++) {
+        for (int j = 0; j < m->colunas; j++) {
+            printf("Elemento [%d][%d]: ", i + 1, j + 1);
+            scanf("%lf", &m->dados[i][j]);
+        }
+    }
+}
+
+void exibirMatriz(Matriz m) {
+    for (int i = 0; i < m.linhas; i++) {
+        for (int j = 0; j < m.colunas; j++) {
+            printf("%10.2lf ", m.dados[i][j]);
+        }
+        printf("\n");
+    }
+}
+
+int somarSubtrair(Matriz a, Matriz b,
+                  Matriz *r, int operacao) {
+    if (a.linhas != b.linhas ||
+        a.colunas != b.colunas) {
+        return 0;
+    }
+
+    r->linhas = a.linhas;
+    r->colunas = a.colunas;
+
+    for (int i = 0; i < a.linhas; i++) {
+        for (int j = 0; j < a.colunas; j++) {
+            if (operacao == 1)
+                r->dados[i][j] =
+                    a.dados[i][j] + b.dados[i][j];
+            else
+                r->dados[i][j] =
+                    a.dados[i][j] - b.dados[i][j];
+        }
+    }
+
+    return 1;
+}
+
+int multiplicar(Matriz a, Matriz b, Matriz *r) {
+    if (a.colunas != b.linhas)
+        return 0;
+
+    r->linhas = a.linhas;
+    r->colunas = b.colunas;
+
+    for (int i = 0; i < r->linhas; i++) {
+        for (int j = 0; j < r->colunas; j++) {
+            r->dados[i][j] = 0;
+
+            for (int k = 0; k < a.colunas; k++) {
+                r->dados[i][j] +=
+                    a.dados[i][k] * b.dados[k][j];
+            }
+        }
+    }
+
+    return 1;
+}
+
+// Calcula a inversa pelo metodo de Gauss-Jordan.
+int inverter(Matriz a, Matriz *inv) {
+    if (a.linhas != a.colunas)
+        return 0;
+
+    int n = a.linhas;
+    double aug[MAX][2 * MAX];
+
+    for (int i = 0; i < n; i++) {
+        for (int j = 0; j < n; j++)
+            aug[i][j] = a.dados[i][j];
+
+        for (int j = 0; j < n; j++)
+            aug[i][j + n] = (i == j) ? 1.0 : 0.0;
+    }
+
+    for (int i = 0; i < n; i++) {
+        int pivo = i;
+
+        for (int k = i + 1; k < n; k++) {
+            if (fabs(aug[k][i]) > fabs(aug[pivo][i]))
+                pivo = k;
+        }
+
+        if (fabs(aug[pivo][i]) < 1e-10)
+            return 0;
+
+        if (pivo != i) {
+            for (int j = 0; j < 2 * n; j++) {
+                double temp = aug[i][j];
+                aug[i][j] = aug[pivo][j];
+                aug[pivo][j] = temp;
+            }
+        }
+
+        double divisor = aug[i][i];
+
+        for (int j = 0; j < 2 * n; j++)
+            aug[i][j] /= divisor;
+
+        for (int k = 0; k < n; k++) {
+            if (k != i) {
+                double fator = aug[k][i];
+
+                for (int j = 0; j < 2 * n; j++)
+                    aug[k][j] -= fator * aug[i][j];
+            }
+        }
+    }
+
+    inv->linhas = n;
+    inv->colunas = n;
+
+    for (int i = 0; i < n; i++) {
+        for (int j = 0; j < n; j++)
+            inv->dados[i][j] = aug[i][j + n];
+    }
+
+    return 1;
+}
+
+int dividir(Matriz a, Matriz b, Matriz *r) {
+    Matriz inversa;
+
+    if (!inverter(b, &inversa))
+        return 0;
+
+    if (!multiplicar(a, inversa, r))
+        return 0;
+
+    return 1;
+}
+
+int main() {
+    Matriz matrizes[MAX_MATRIZES];
+    Matriz resultado, temporaria;
+
+    int quantidade, opcao;
+
+    printf("=================================\n");
+    printf(" CALCULADORA DE MATRIZES\n");
+    printf("=================================\n");
+
+    do {
+        printf("Quantas matrizes deseja cadastrar? ");
+        scanf("%d", &quantidade);
+    } while (quantidade < 2 ||
+             quantidade > MAX_MATRIZES);
+
+    for (int i = 0; i < quantidade; i++)
+        lerMatriz(&matrizes[i], i + 1);
+
+    do {
+        printf("\n========== MENU ==========\n");
+        printf("1 - Adicao\n");
+        printf("2 - Subtracao\n");
+        printf("3 - Multiplicacao\n");
+        printf("4 - Divisao matricial\n");
+        printf("0 - Sair\n");
+        printf("Escolha: ");
+        scanf("%d", &opcao);
+
+        if (opcao == 0)
+            break;
+
+        if (opcao < 1 || opcao > 4) {
+            printf("Opcao invalida!\n");
+            continue;
+        }
+
+        resultado = matrizes[0];
+
+        int sucesso = 1;
+
+        for (int i = 1; i < quantidade; i++) {
+            if (opcao == 1 || opcao == 2) {
+                sucesso = somarSubtrair(
+                    resultado,
+                    matrizes[i],
+                    &temporaria,
+                    opcao
+                );
+            }
+            else if (opcao == 3) {
+                sucesso = multiplicar(
+                    resultado,
+                    matrizes[i],
+                    &temporaria
+                );
+            }
+            else {
+                sucesso = dividir(
+                    resultado,
+                    matrizes[i],
+                    &temporaria
+                );
+            }
+
+            if (!sucesso) {
+                if (opcao == 1 || opcao == 2)
+                    printf("Erro: dimensoes diferentes!\n");
+                else if (opcao == 3)
+                    printf("Erro: dimensoes incompatíveis para multiplicacao!\n");
+                else
+                    printf("Erro: matriz divisora sem inversa ou dimensoes incompatíveis!\n");
+
+                break;
+            }
+
+            resultado = temporaria;
+        }
+
+        if (sucesso) {
+            printf("\nMatriz resultante:\n");
+            exibirMatriz(resultado);
+        }
+
+    } while (1);
+
+    printf("\nPrograma encerrado!\n");
+
+    return 0;
+}
